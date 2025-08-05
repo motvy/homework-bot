@@ -36,11 +36,14 @@ def check_tokens():
         missing = [
             name
             for name, token in zip(
-                ["PRACTICUM_TOKEN", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID"], tokens
+                ["PRACTICUM_TOKEN", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID"],
+                tokens,
             )
             if not token
         ]
-        logging.critical(f"Отсутствует обязательная переменная окружения: {missing}")
+        logging.critical(
+            f"Отсутствует обязательная переменная окружения: {missing}"
+        )
         return False
     return True
 
