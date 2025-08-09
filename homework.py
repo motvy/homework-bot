@@ -126,6 +126,18 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
+def handle_error(bot, message, last_error_message):
+    """Отправляет сообщение об ошибке в лог и Telegram, если оно новое."""
+    logging.error(message)
+    if message != last_error_message:
+        try:
+            send_message(bot, message)
+        except (apihelper.ApiException, requests.RequestException):
+            pass
+        return message
+    return last_error_message
+
+
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
@@ -150,28 +162,18 @@ def main():
             last_error_message = None
 
         except PracticumAPIError as error:
-            # Наши предсказуемые ошибки API
-            message = f"Сбой в работе программы: {error}"
-            logging.error(message)
-            if message != last_error_message:
-                try:
-                    send_message(bot, message)
-                except (apihelper.ApiException, requests.RequestException):
-                    pass
-                last_error_message = message
+            last_error_message = handle_error(
+                bot, f"Сбой в работе программы: {error}", last_error_message
+            )
 
         except Exception as error:
-            # Непредвиденные ошибки
-            message = f"Неизвестная ошибка: {error}"
-            logging.exception(message)
-            if message != last_error_message:
-                try:
-                    send_message(bot, message)
-                except (apihelper.ApiException, requests.RequestException):
-                    pass
-                last_error_message = message
+            logging.exception(f"Неизвестная ошибка: {error}")
+            last_error_message = handle_error(
+                bot, f"Неизвестная ошибка: {error}", last_error_message
+            )
 
         time.sleep(RETRY_PERIOD)
+
 
 
 if __name__ == "__main__":
