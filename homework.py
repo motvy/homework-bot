@@ -86,7 +86,7 @@ def get_api_answer(timestamp):
 
     if response.status_code != 200:
         raise APIResponseError(
-            f"Эндпоинт {ENDPOINT} недоступен. Код ответа API: {response.status_code}"
+            f"Эндпоинт {ENDPOINT} недоступен. Ответ API: {response.status_code}"
         )
 
     try:
