@@ -1,3 +1,5 @@
+import exceptions as api_exceptions
+
 import os
 import sys
 import time
@@ -21,30 +23,6 @@ HOMEWORK_VERDICTS = {
     "reviewing": "Работа взята на проверку ревьюером.",
     "rejected": "Работа проверена: у ревьюера есть замечания.",
 }
-
-
-class PracticumAPIError(Exception):
-    """Базовое исключение для проблем с API Практикума."""
-
-    pass
-
-
-class APIRequestError(PracticumAPIError):
-    """Ошибка сетевого запроса (requests.RequestException)."""
-
-    pass
-
-
-class APIResponseError(PracticumAPIError):
-    """Ошибка ответа сервера (не 200)."""
-
-    pass
-
-
-class APIJSONError(PracticumAPIError):
-    """Ошибка при разборе JSON в ответе."""
-
-    pass
 
 
 def check_tokens():
@@ -82,17 +60,19 @@ def get_api_answer(timestamp):
             ENDPOINT, headers=HEADERS, params=params, timeout=10
         )
     except requests.RequestException as err:
-        raise APIRequestError(f"Ошибка запроса к API: {err}") from err
+        raise api_exceptions.APIRequestError(
+            f"Ошибка запроса к API: {err}"
+        ) from err
 
     if response.status_code != 200:
-        raise APIResponseError(
+        raise api_exceptions.APIResponseError(
             f"{ENDPOINT} недоступен. Код ответа API: {response.status_code}"
         )
 
     try:
         return response.json()
     except ValueError as err:
-        raise APIJSONError(
+        raise api_exceptions.APIJSONError(
             f"Не удалось разобрать JSON в ответе API: {err}"
         ) from err
 
@@ -101,8 +81,10 @@ def check_response(response):
     """Проверяет корректность ответа API."""
     if not isinstance(response, dict):
         raise TypeError("Ответ API имеет неверный тип, ожидался dict")
-    if "homeworks" not in response or "current_date" not in response:
-        raise KeyError("В ответе API отсутствуют ожидаемые ключи")
+
+    for key in ("homeworks", "current_date"):
+        if key not in response:
+            raise KeyError(f"В ответе API отсутствует ключ {key}")
 
     response_homeworks = response["homeworks"]
     if not isinstance(response_homeworks, list):
@@ -134,7 +116,9 @@ def handle_error(bot, message, last_error_message):
             send_message(bot, message)
         except (apihelper.ApiException, requests.RequestException):
             pass
-        return message
+        else:
+            return message
+
     return last_error_message
 
 
@@ -161,7 +145,7 @@ def main():
             timestamp = response.get("current_date", timestamp)
             last_error_message = None
 
-        except PracticumAPIError as error:
+        except api_exceptions.PracticumAPIError as error:
             last_error_message = handle_error(
                 bot, f"Сбой в работе программы: {error}", last_error_message
             )
